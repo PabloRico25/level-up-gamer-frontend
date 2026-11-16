@@ -1,9 +1,10 @@
 import { useContext, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CarritoContext, ProductosContext } from '../context/tiendaContext.js'
+import { CarritoContext, ProductosContext, SesionContext } from '../context/tiendaContext.js'
 import { formatoPrecio } from '../utils/tienda.js'
 
 function DetalleProducto() {
+  const { sesion } = useContext(SesionContext)
   const [parametros] = useSearchParams()
   const { productos, cargando } = useContext(ProductosContext)
   const { agregarAlCarrito } = useContext(CarritoContext)
@@ -28,12 +29,13 @@ function DetalleProducto() {
           <p className="detalle-dato">Fabricante: <span>{producto.fabricante}</span></p>
           <p className="detalle-precio">{formatoPrecio(producto.precio)}</p>
           <p className="detalle-stock">{producto.stock > 0 ? `${producto.stock} unidades disponibles` : 'Sin stock'}</p>
-          <div className="detalle-compra">
+          {sesion?.tipo !== 'Vendedor' && <div className="detalle-compra">
             <div className="cantidad-producto"><label htmlFor="cantidad">Cantidad</label>
               <input id="cantidad" type="number" min="1" max={producto.stock} value={cantidad} onChange={e => setCantidad(e.target.value)} disabled={!producto.stock}/>
             </div>
             <button className="boton-agregar" type="button" disabled={!producto.stock} onClick={agregar}>Añadir al carrito</button>
           </div>
+          }
           {mensaje && <p className="mensaje-duoc" role="status">{mensaje} <Link to="/carrito">Ver carrito</Link></p>}
           <p className="mensaje-duoc">Usuarios Duoc tienen 20% de descuento al iniciar sesión.</p>
         </div>

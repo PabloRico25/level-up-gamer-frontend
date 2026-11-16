@@ -1,9 +1,10 @@
 import { useContext } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ProductosContext } from '../context/tiendaContext.js'
+import { ProductosContext, SesionContext } from '../context/tiendaContext.js'
 import { formatoPrecio } from '../utils/tienda.js'
 
 function AdminProductoDetalle() {
+  const { sesion } = useContext(SesionContext)
   const [parametros] = useSearchParams()
   const { productos, cargando } = useContext(ProductosContext)
   const p = productos.find(item => item.id === parametros.get('id'))
@@ -19,7 +20,7 @@ function AdminProductoDetalle() {
         )}
         <p className="admin-detalle-descripcion">{p.descripcion}</p>
         {p.stockCritico != null && p.stock <= p.stockCritico && <p className="admin-alerta-critico">Stock crítico: revisa la cantidad disponible.</p>}
-        <div className="admin-form-acciones"><Link className="admin-boton" to={`/admin/producto-editar?id=${encodeURIComponent(p.id)}`}>Editar</Link><Link className="admin-cancelar" to="/admin/productos">Volver</Link></div>
+        <div className="admin-form-acciones">{sesion?.tipo === 'Administrador' && <Link className="admin-boton" to={`/admin/producto-editar?id=${encodeURIComponent(p.id)}`}>Editar</Link>}<Link className="admin-cancelar" to="/admin/productos">Volver</Link></div>
       </div>
     </div>
   </>

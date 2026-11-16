@@ -1,10 +1,11 @@
 
 import { useContext } from 'react'
 import { Link } from 'react-router-dom'
-import { CarritoContext } from '../context/tiendaContext.js'
+import { CarritoContext, SesionContext } from '../context/tiendaContext.js'
 
 function ProductCard({ producto }) {
 
+  const { sesion } = useContext(SesionContext)
   const { agregarAlCarrito } = useContext(CarritoContext)
 
   return (
@@ -36,7 +37,7 @@ function ProductCard({ producto }) {
       </p>
 
       {/* Botón carrito */}
-      <button
+      {sesion?.tipo !== 'Vendedor' && <button
         type="button"
         className="boton-agregar"
         onClick={() => agregarAlCarrito(producto.id)}
@@ -45,7 +46,7 @@ function ProductCard({ producto }) {
         {producto.stock > 0
           ? 'Añadir al carrito'
           : 'Sin stock'}
-      </button>
+      </button>}
 
     </article>
   )
