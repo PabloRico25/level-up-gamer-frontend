@@ -1,43 +1,42 @@
 
 import { useContext, useState } from 'react'
-import { SesionContext, UsuariosContext } from '../context/tiendaContext.js'
+import { SesionContext } from '../context/tiendaContext.js'
 import { Link, useNavigate } from 'react-router-dom'
 
 function Login() {
 
   const navigate = useNavigate()
-  const { usuarios } = useContext(UsuariosContext)
+
   const { iniciarSesion: guardarSesion } = useContext(SesionContext)
 
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [errores, setErrores] = useState({})
+  const [cargando, setCargando] = useState(false)
 
-  function iniciarSesion(e) {
+  // Iniciar sesión con Spring Boot
+  async function iniciarSesion(e) {
     e.preventDefault()
 
     const nuevosErrores = {}
-    const correoLimpio = correo.trim()
+    const correoLimpio = correo.trim().toLowerCase()
 
-    const correoPermitido =
-      /^[^\s@]+@(duoc\.cl|profesor\.duoc\.cl|gmail\.com)$/i
+    const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
     // Validar correo
     if (!correoLimpio) {
       nuevosErrores.correo = 'Ingresa tu correo electrónico.'
     } else if (correoLimpio.length > 100) {
-      nuevosErrores.correo = 'El correo no puede superar los 100 caracteres.'
-    } else if (!correoPermitido.test(correoLimpio)) {
       nuevosErrores.correo =
-        'Usa un correo @duoc.cl, @profesor.duoc.cl o @gmail.com.'
+        'El correo no puede superar los 100 caracteres.'
+    } else if (!correoValido.test(correoLimpio)) {
+      nuevosErrores.correo =
+        'Ingresa un correo electrónico válido.'
     }
 
     // Validar contraseña
     if (!contrasena) {
       nuevosErrores.contrasena = 'Ingresa tu contraseña.'
-    } else if (contrasena.length < 4 || contrasena.length > 10) {
-      nuevosErrores.contrasena =
-        'La contraseña debe tener entre 4 y 10 caracteres.'
     }
 
     if (Object.keys(nuevosErrores).length > 0) {
@@ -45,25 +44,34 @@ function Login() {
       return
     }
 
-    const usuario = usuarios.find(
-      item =>
-        item.correo?.toLowerCase() === correoLimpio.toLowerCase() &&
-        item.contrasena === contrasena
-    )
-
-    if (!usuario) {
-      setErrores({
-        general: 'Correo o contraseña incorrectos.'
-      })
-      return
-    }
-
-    guardarSesion(usuario)
-
     setErrores({})
+    setCargando(true)
 
-    // Volver al inicio
-    navigate('/')
+    try {
+
+      // Enviar credenciales a Spring Boot
+      await guardarSesion(correoLimpio, contrasena)
+
+      // Volver al inicio si el login es correcto
+      navigate('/')
+
+    } catch (error) {
+
+      console.error('Error al iniciar sesión:', error.message)
+
+      if (error instanceof TypeError) {
+        setErrores({
+          general: 'No se pudo conectar con el servidor.'
+        })
+      } else {
+        setErrores({
+          general: 'Correo o contraseña incorrectos, o no fue posible iniciar sesión.'
+        })
+      }
+
+    } finally {
+      setCargando(false)
+    }
   }
 
   return (
@@ -103,10 +111,11 @@ function Login() {
             <input
               id="correo"
               type="email"
-              maxLength="100"
+              maxLength={100}
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
               className={errores.correo ? 'campo-error' : ''}
+              disabled={cargando}
             />
 
             <p className="error">{errores.correo}</p>
@@ -121,20 +130,24 @@ function Login() {
             <input
               id="contrasena"
               type="password"
-              maxLength="10"
               value={contrasena}
               onChange={(e) => setContrasena(e.target.value)}
               className={errores.contrasena ? 'campo-error' : ''}
+              disabled={cargando}
             />
 
             <p className="error">{errores.contrasena}</p>
           </div>
 
-          <button type="submit" className="boton-login">
-            Ingresar
+          <button
+            type="submit"
+            className="boton-login"
+            disabled={cargando}
+          >
+            {cargando ? 'Ingresando...' : 'Ingresar'}
           </button>
 
-          <p className="login-error">
+          <p className="login-error" role="alert">
             {errores.general}
           </p>
 

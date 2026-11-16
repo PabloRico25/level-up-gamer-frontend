@@ -1,27 +1,162 @@
-import { useEffect, useState } from 'react'
-import { datosGuardados } from '../utils/tienda.js'
-import { SesionContext, UsuariosContext } from './tiendaContext.js'
+
+import { useEffect, useRef, useState } from 'react'
+
+import {
+  iniciarSesion as loginApi,
+  renovarSesion,
+  obtenerMiPerfil,
+  cerrarSesion as logoutApi
+} from '../services/authApi.js'
+
+import { SesionContext } from './tiendaContext.js'
+
+// Adaptar roles de Spring Boot a React
+function adaptarUsuario(usuario) {
+
+  if (!usuario) return null
+
+  const roles = {
+    ADMINISTRADOR: 'Administrador',
+    VENDEDOR: 'Vendedor',
+    CLIENTE: 'Cliente'
+  }
+
+  return {
+    ...usuario,
+    tipo: roles[usuario.tipo] || usuario.tipo
+  }
+}
 
 export function UsuariosProvider({ children }) {
-  const [usuarios, setUsuarios] = useState(() => {
-    const guardados = datosGuardados('usuariosLevelUp', [])
-    return Array.isArray(guardados) ? guardados : []
-  })
-  const [sesion, setSesion] = useState(() => datosGuardados('sesionLevelUp', null))
-  useEffect(() => { localStorage.setItem('usuariosLevelUp', JSON.stringify(usuarios)) }, [usuarios])
+
+  const [sesion, setSesion] = useState(null)
+  const [cargandoSesion, setCargandoSesion] = useState(true)
+
+  const restauracionRef = useRef(null)
+  const revisionRef = useRef(0)
+
   useEffect(() => {
-    if (sesion) localStorage.setItem('sesionLevelUp', JSON.stringify(sesion))
-    else localStorage.removeItem('sesionLevelUp')
-  }, [sesion])
-  function iniciarSesion(usuario) {
-    setSesion({ run: usuario.run, nombre: usuario.nombre, correo: usuario.correo, tipo: usuario.tipo || 'Cliente' })
+    const invalidar=()=>setSesion(null)
+    window.addEventListener('sesion-invalida',invalidar)
+    return ()=>window.removeEventListener('sesion-invalida',invalidar)
+  }, [])
+
+  // Recuperar sesión al abrir la página
+  useEffect(() => {
+
+    let activo = true
+    const revision = revisionRef.current
+
+    if (!restauracionRef.current) {
+
+      restauracionRef.current = (async () => {
+
+        try {
+          await renovarSesion()
+          return await obtenerMiPerfil()
+        } catch {
+          return null
+        }
+
+      })()
+    }
+
+    restauracionRef.current
+      .then(usuario => {
+
+        if (activo && revisionRef.current === revision) {
+          setSesion(adaptarUsuario(usuario))
+        }
+
+      })
+      .finally(() => {
+
+        if (activo) {
+          setCargandoSesion(false)
+        }
+
+      })
+
+    return () => {
+      activo = false
+    }
+
+  }, [])
+
+  const usuarioId = sesion?.id
+
+  // Actualizar perfil al volver a la pestaña
+  useEffect(() => {
+
+    if (!usuarioId || cargandoSesion) return
+
+    let activo = true
+    const revision = revisionRef.current
+
+    async function actualizarPerfil() {
+
+      try {
+
+        let usuario
+
+        try {
+          usuario = await obtenerMiPerfil()
+        } catch {
+          await renovarSesion()
+          usuario = await obtenerMiPerfil()
+        }
+
+        if (activo && revisionRef.current === revision) {
+          setSesion(adaptarUsuario(usuario))
+        }
+
+      } catch (error) {
+
+        console.warn(
+          'No se pudo actualizar el perfil:',
+          error.message
+        )
+
+      }
+    }
+
+    window.addEventListener('focus', actualizarPerfil)
+
+    return () => {
+      activo = false
+      window.removeEventListener('focus', actualizarPerfil)
+    }
+
+  }, [usuarioId, cargandoSesion])
+
+  // Iniciar sesión con Spring Boot
+  async function iniciarSesion(correo, contrasena) {
+
+    revisionRef.current++
+    const respuesta = await loginApi(correo, contrasena)
+
+    setSesion(adaptarUsuario(respuesta.usuario))
+
+    return respuesta
   }
-  function cerrarSesion() { setSesion(null) }
+
+  // Cerrar sesión
+  async function cerrarSesion() {
+
+    revisionRef.current++
+    await logoutApi()
+    setSesion(null)
+
+  }
+
   return (
-    <UsuariosContext.Provider value={{ usuarios, setUsuarios }}>
-      <SesionContext.Provider value={{ sesion, iniciarSesion, cerrarSesion }}>
-        {children}
-      </SesionContext.Provider>
-    </UsuariosContext.Provider>
+    <SesionContext.Provider value={{
+      sesion,
+      cargandoSesion,
+      iniciarSesion,
+      cerrarSesion
+    }}>
+      {children}
+    </SesionContext.Provider>
   )
 }

@@ -1,7 +1,7 @@
 
-import { useContext, useState } from 'react'
-import { UsuariosContext } from '../context/tiendaContext.js'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { registrarUsuario as registrarUsuarioApi } from '../services/authApi.js'
 
 // Regiones y comunas del proyecto original
 const regiones = [
@@ -38,6 +38,7 @@ const datosIniciales = {
 
 // Validar RUN chileno
 function validarRun(run) {
+
   if (!/^[0-9]{6,8}[0-9Kk]$/.test(run)) {
     return false
   }
@@ -74,6 +75,7 @@ function validarRun(run) {
 
 // Validar mayoría de edad
 function esMayorDeEdad(fecha) {
+
   const nacimiento = new Date(fecha + 'T00:00:00')
   const hoy = new Date()
 
@@ -96,12 +98,13 @@ function esMayorDeEdad(fecha) {
 }
 
 function Registro() {
+
   const navigate = useNavigate()
-  const { usuarios, setUsuarios } = useContext(UsuariosContext)
 
   const [datos, setDatos] = useState(datosIniciales)
   const [errores, setErrores] = useState({})
   const [mensaje, setMensaje] = useState('')
+  const [cargando, setCargando] = useState(false)
 
   // Fecha máxima permitida
   const fechaMaxima = new Date()
@@ -117,8 +120,9 @@ function Registro() {
     item => item.nombre === datos.region
   )
 
-  // Actualizar campos
+  // Actualizar campos del formulario
   function cambiarCampo(e) {
+
     const { name, value } = e.target
 
     setDatos(actual => ({
@@ -135,77 +139,83 @@ function Registro() {
     setMensaje('')
   }
 
-  // Registrar usuario
-  function registrarUsuario(e) {
+  // Registrar usuario mediante Spring Boot
+  async function manejarRegistro(e) {
+
     e.preventDefault()
 
     const nuevosErrores = {}
 
     const usuario = {
-      ...datos,
       run: datos.run.trim().toUpperCase(),
       nombre: datos.nombre.trim(),
       apellidos: datos.apellidos.trim(),
-      correo: datos.correo.trim(),
-      direccion: datos.direccion.trim(),
-      tipo: 'Cliente'
+      correo: datos.correo.trim().toLowerCase(),
+      contrasena: datos.contrasena,
+      fechaNacimiento: datos.fechaNacimiento,
+      region: datos.region,
+      comuna: datos.comuna,
+      direccion: datos.direccion.trim()
     }
 
-    // RUN
+    // Validar RUN
     if (!usuario.run) {
       nuevosErrores.run = 'Ingresa tu RUN.'
     } else if (!validarRun(usuario.run)) {
       nuevosErrores.run = 'El RUN ingresado no es válido.'
     }
 
-    // Nombre
+    // Validar nombre
     if (!usuario.nombre) {
       nuevosErrores.nombre = 'Ingresa tu nombre.'
     } else if (usuario.nombre.length > 50) {
-      nuevosErrores.nombre = 'El nombre no puede superar los 50 caracteres.'
+      nuevosErrores.nombre =
+        'El nombre no puede superar los 50 caracteres.'
     }
 
-    // Apellidos
+    // Validar apellidos
     if (!usuario.apellidos) {
       nuevosErrores.apellidos = 'Ingresa tus apellidos.'
     } else if (usuario.apellidos.length > 100) {
-      nuevosErrores.apellidos = 'Los apellidos no pueden superar los 100 caracteres.'
+      nuevosErrores.apellidos =
+        'Los apellidos no pueden superar los 100 caracteres.'
     }
 
-    // Correo
+    // Validar correo
     const correoPermitido =
       /^[^\s@]+@(duoc\.cl|profesor\.duoc\.cl|gmail\.com)$/i
 
     if (!usuario.correo) {
       nuevosErrores.correo = 'Ingresa tu correo electrónico.'
     } else if (usuario.correo.length > 100) {
-      nuevosErrores.correo = 'El correo no puede superar los 100 caracteres.'
+      nuevosErrores.correo =
+        'El correo no puede superar los 100 caracteres.'
     } else if (!correoPermitido.test(usuario.correo)) {
       nuevosErrores.correo =
         'Usa un correo @duoc.cl, @profesor.duoc.cl o @gmail.com.'
     }
 
-    // Contraseña
+    // Validar contraseña
     if (!usuario.contrasena) {
       nuevosErrores.contrasena = 'Ingresa una contraseña.'
-    } else if (
-      usuario.contrasena.length < 4 ||
-      usuario.contrasena.length > 10
-    ) {
+    } else if (usuario.contrasena.length < 8 || usuario.contrasena.length > 72) {
       nuevosErrores.contrasena =
-        'La contraseña debe tener entre 4 y 10 caracteres.'
+        'La contraseña debe tener entre 8 y 72 caracteres.'
     }
 
     // Repetir contraseña
     if (!datos.repetirContrasena) {
-      nuevosErrores.repetirContrasena = 'Repite tu contraseña.'
+      nuevosErrores.repetirContrasena =
+        'Repite tu contraseña.'
     } else if (datos.repetirContrasena !== usuario.contrasena) {
-      nuevosErrores.repetirContrasena = 'Las contraseñas no coinciden.'
+      nuevosErrores.repetirContrasena =
+        'Las contraseñas no coinciden.'
     }
 
     // Fecha de nacimiento
     if (!datos.fechaNacimiento) {
-      nuevosErrores.fechaNacimiento = 'Selecciona tu fecha de nacimiento.'
+      nuevosErrores.fechaNacimiento =
+        'Selecciona tu fecha de nacimiento.'
     } else if (!esMayorDeEdad(datos.fechaNacimiento)) {
       nuevosErrores.fechaNacimiento =
         'Debes tener al menos 18 años para registrarte.'
@@ -235,34 +245,44 @@ function Registro() {
       return
     }
 
-    // Evitar RUN duplicado
-    if (usuarios.some(item =>
-      item.run?.toUpperCase() === usuario.run
-    )) {
-      setErrores({
-        run: 'Este RUN ya se encuentra registrado.'
-      })
-      return
+    setCargando(true)
+    setMensaje('')
+
+    try {
+
+      // Enviar los datos a Spring Boot
+      await registrarUsuarioApi(usuario)
+
+      // Mostrar mensaje de éxito
+      setMensaje('Cuenta creada correctamente.')
+
+      // Limpiar formulario
+      setDatos(datosIniciales)
+      setErrores({})
+
+      // Ir al login
+      setTimeout(() => {
+        navigate('/login')
+      }, 1500)
+
+    } catch (error) {
+
+      console.error('Error al registrar usuario:', error.message)
+
+      if (error instanceof TypeError) {
+        setErrores({
+          general: 'No se pudo conectar con el servidor.'
+        })
+      } else {
+        setErrores({
+          general:
+            'No se pudo crear la cuenta. Revisa tus datos o verifica si el RUN o correo ya están registrados.'
+        })
+      }
+
+    } finally {
+      setCargando(false)
     }
-
-    if (usuarios.some(item => item.correo?.toLowerCase() === usuario.correo.toLowerCase())) {
-      setErrores({ correo: 'Este correo ya se encuentra registrado.' })
-      return
-    }
-
-    // Guardar usuario
-    delete usuario.repetirContrasena
-
-    setUsuarios(actual => [...actual, usuario])
-
-    setMensaje('Cuenta creada correctamente.')
-    setDatos(datosIniciales)
-    setErrores({})
-
-    // Ir al login
-    setTimeout(() => {
-      navigate('/login')
-    }, 1500)
   }
 
   // Campos del formulario
@@ -287,14 +307,12 @@ function Registro() {
       id: 'contrasena',
       label: 'Contraseña',
       tipo: 'password',
-      max: 10,
-      ayuda: 'De 4 a 10 caracteres.'
+      ayuda: 'Mínimo 8 caracteres.'
     },
     {
       id: 'repetirContrasena',
       label: 'Repetir contraseña',
-      tipo: 'password',
-      max: 10
+      tipo: 'password'
     },
     {
       id: 'fechaNacimiento',
@@ -306,6 +324,7 @@ function Registro() {
 
   return (
     <main className="registro-main">
+
       <section className="registro-contenedor">
 
         <div className="ruta-productos">
@@ -322,9 +341,10 @@ function Registro() {
 
         <form
           className="form-registro"
-          onSubmit={registrarUsuario}
+          onSubmit={manejarRegistro}
           noValidate
         >
+
           <p className="mensaje-formulario">
             Todos los campos son obligatorios.
           </p>
@@ -333,7 +353,9 @@ function Registro() {
 
             {/* Campos principales */}
             {campos.map(campo => (
+
               <div className="campo-registro" key={campo.id}>
+
                 <label htmlFor={campo.id}>
                   {campo.label}
                 </label>
@@ -347,6 +369,7 @@ function Registro() {
                   placeholder={campo.placeholder || ''}
                   value={datos[campo.id]}
                   onChange={cambiarCampo}
+                  disabled={cargando}
                   className={errores[campo.id] ? 'campo-error' : ''}
                 />
 
@@ -355,11 +378,13 @@ function Registro() {
                 <p className="error">
                   {errores[campo.id]}
                 </p>
+
               </div>
             ))}
 
             {/* Región */}
             <div className="campo-registro">
+
               <label htmlFor="region">Región</label>
 
               <select
@@ -367,8 +392,10 @@ function Registro() {
                 name="region"
                 value={datos.region}
                 onChange={cambiarCampo}
+                disabled={cargando}
                 className={errores.region ? 'campo-error' : ''}
               >
+
                 <option value="">Selecciona una región</option>
 
                 {regiones.map(item => (
@@ -376,6 +403,7 @@ function Registro() {
                     {item.nombre}
                   </option>
                 ))}
+
               </select>
 
               <p className="error">{errores.region}</p>
@@ -383,6 +411,7 @@ function Registro() {
 
             {/* Comuna */}
             <div className="campo-registro">
+
               <label htmlFor="comuna">Comuna</label>
 
               <select
@@ -390,9 +419,10 @@ function Registro() {
                 name="comuna"
                 value={datos.comuna}
                 onChange={cambiarCampo}
-                disabled={!datos.region}
+                disabled={cargando || !datos.region}
                 className={errores.comuna ? 'campo-error' : ''}
               >
+
                 <option value="">Selecciona una comuna</option>
 
                 {regionSeleccionada?.comunas.map(comuna => (
@@ -400,6 +430,7 @@ function Registro() {
                     {comuna}
                   </option>
                 ))}
+
               </select>
 
               <p className="error">{errores.comuna}</p>
@@ -407,6 +438,7 @@ function Registro() {
 
             {/* Dirección */}
             <div className="campo-registro campo-completo">
+
               <label htmlFor="direccion">Dirección</label>
 
               <input
@@ -416,6 +448,7 @@ function Registro() {
                 maxLength={300}
                 value={datos.direccion}
                 onChange={cambiarCampo}
+                disabled={cargando}
                 className={errores.direccion ? 'campo-error' : ''}
               />
 
@@ -424,11 +457,21 @@ function Registro() {
 
           </div>
 
-          <button type="submit" className="boton-registro">
-            Crear cuenta
+          <button
+            type="submit"
+            className="boton-registro"
+            disabled={cargando}
+          >
+            {cargando ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
 
-          <p className="registro-exitoso">{mensaje}</p>
+          <p className="error" role="alert">
+            {errores.general}
+          </p>
+
+          <p className="registro-exitoso">
+            {mensaje}
+          </p>
 
           <p className="texto-login">
             ¿Ya tienes cuenta?{' '}

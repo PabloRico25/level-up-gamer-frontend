@@ -1,3 +1,6 @@
+import RutaSesion from './components/RutaSesion.jsx'
+import Boletas from './pages/Boletas.jsx'
+import BoletaDetalle from './pages/BoletaDetalle.jsx'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Navbar from './components/navbar.jsx'
 import Footer from './components/Footer.jsx'
@@ -30,6 +33,8 @@ function App() {
       <Route path="/productos" element={<Productos/>}/>
       <Route path="/detalle-producto" element={<DetalleProducto/>}/>
       <Route path="/carrito" element={<Carrito/>}/>
+      <Route path="/mis-compras" element={<RutaSesion><Boletas/></RutaSesion>}/>
+      <Route path="/boleta/:id" element={<RutaSesion><BoletaDetalle/></RutaSesion>}/>
       <Route path="/login" element={<Login/>}/>
       <Route path="/registro" element={<Registro/>}/>
       <Route path="/nosotros" element={<Nosotros/>}/>
@@ -42,6 +47,8 @@ function App() {
         <Route path="producto-nuevo" element={<AdminProductoFormulario/>}/>
         <Route path="producto-editar" element={<AdminProductoFormulario editar/>}/>
         <Route path="producto-detalle" element={<AdminProductoDetalle/>}/>
+        <Route path="boletas" element={<Boletas admin/>}/>
+        <Route path="boleta-detalle" element={<BoletaDetalle admin/>}/>
         <Route path="usuarios" element={<AdminUsuarios/>}/>
         <Route path="usuario-nuevo" element={<AdminUsuarioFormulario/>}/>
         <Route path="usuario-editar" element={<AdminUsuarioFormulario editar/>}/>
