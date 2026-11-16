@@ -1,0 +1,38 @@
+[
+  {
+    "prueba": "Login real administrador desde React",
+    "resultado": "APROBADA"
+  },
+  {
+    "prueba": "Administrador crea usuario vendedor mediante formulario",
+    "resultado": "APROBADA"
+  },
+  {
+    "prueba": "Vendedor no ve administración ni accede por URL directa",
+    "resultado": "APROBADA"
+  },
+  {
+    "prueba": "Registro real desde formulario React",
+    "resultado": "APROBADA"
+  },
+  {
+    "prueba": "Checkout real crea boleta desde React",
+    "resultado": "APROBADA"
+  },
+  {
+    "prueba": "Recarga conserva sesión y permite consultar boleta",
+    "resultado": "APROBADA"
+  },
+  {
+    "prueba": "Carrito queda vacío tras compra confirmada",
+    "resultado": "APROBADA"
+  },
+  {
+    "prueba": "Logout evita restauración tras recargar",
+    "resultado": "APROBADA"
+  },
+  {
+    "prueba": "Recorrido sin errores JavaScript no capturados",
+    "resultado": "APROBADA"
+  }
+]
