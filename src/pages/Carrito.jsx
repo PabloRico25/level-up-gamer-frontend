@@ -1,21 +1,34 @@
-import { useContext } from 'react'
-import { Link } from 'react-router-dom'
+import { comprar } from '../api/boletasApi.js'
+import { useContext, useRef, useState } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { CarritoContext, ProductosContext, SesionContext } from '../context/tiendaContext.js'
 import { calcularTotales, formatoPrecio } from '../utils/tienda.js'
 
 function Carrito() {
   const { carrito, cambiarCantidad, eliminarDelCarrito, vaciarCarrito } = useContext(CarritoContext)
-  const { productos } = useContext(ProductosContext)
+  const { productos, recargar } = useContext(ProductosContext)
   const { sesion } = useContext(SesionContext)
   const items = carrito.map(item => ({ ...productos.find(p => p.id === item.id), cantidad: item.cantidad }))
   const { subtotal, descuento, total } = calcularTotales(carrito, productos, sesion?.correo)
-  function finalizarCompra() {
-    if (!items.length) return
-    if (window.confirm('¿Confirmas la compra de demostración?')) {
+  const navigate = useNavigate()
+  const [comprando, setComprando] = useState(false)
+  const [errorCompra, setErrorCompra] = useState('')
+  const bloqueo = useRef(false)
+  async function finalizarCompra() {
+    if (!items.length || bloqueo.current) return
+    if (!sesion) { navigate('/login'); return }
+    bloqueo.current = true; setComprando(true); setErrorCompra('')
+    try {
+      const boleta = await comprar(carrito)
       vaciarCarrito()
-      window.alert('Compra simulada correctamente. No se realizó ningún cobro.')
-    }
+      await recargar()
+      navigate(`/boleta/${boleta.id}`, { state: { compraConfirmada: true } })
+    } catch (e) {
+      setErrorCompra(e.message + ' El carrito se conserva. Si hubo un corte de conexión, revisa Mis compras antes de volver a confirmar.')
+      await recargar()
+    } finally { bloqueo.current = false; setComprando(false) }
   }
+  if (sesion?.tipo === 'Vendedor') return <Navigate to="/admin/productos" replace />
   return (
     <main><section className="carrito-pagina">
       <div className="ruta-carrito"><Link to="/">Inicio</Link><span>/</span><span>Tu carrito</span></div>
@@ -45,9 +58,9 @@ function Carrito() {
           <div className="resumen-linea"><span>Subtotal</span><span>{formatoPrecio(subtotal)}</span></div>
           <div className="resumen-linea"><span>Descuento Duoc (20%)</span><span>−{formatoPrecio(descuento)}</span></div>
           <div className="resumen-total"><span>Total productos</span><span>{formatoPrecio(total)}</span></div>
-          <button type="button" className="boton-finalizar" disabled={!items.length} onClick={finalizarCompra}>Finalizar compra</button>
+          <button type="button" className="boton-finalizar" disabled={!items.length || comprando} onClick={finalizarCompra}>{comprando ? 'Registrando compra...' : 'Finalizar compra'}</button>
           {!sesion && <p className="mensaje-duoc-carrito">Inicia sesión con tu cuenta Duoc para aplicar el descuento.</p>}
-          <p className="mensaje-demostracion">Carrito de demostración. No realiza cobros ni calcula despacho.</p>
+          <p>La compra registra una boleta y descuenta stock. No procesa pagos bancarios ni despacho.</p>{errorCompra && <p className="error" role="alert">{errorCompra}</p>}
         </aside>
       </div>
     </section></main>
