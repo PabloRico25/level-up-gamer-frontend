@@ -9,10 +9,12 @@ module.exports = function (config) {
       { pattern: 'tests/browser-setup.js', watched: false },
       { pattern: 'tests/build/ui.js', watched: false },
       { pattern: 'src/utils/tienda.js', watched: false, included: false, type: 'module' },
+      { pattern: 'src/services/authApi.js', watched: false, included: false, type: 'module' },
       { pattern: 'src/api/cliente.js', watched: false, included: false, type: 'module' },
       { pattern: 'src/api/productosApi.js', watched: false, included: false, type: 'module' },
       { pattern: 'src/api/categoriasApi.js', watched: false, included: false, type: 'module' },
       { pattern: 'tests/tienda.spec.js', watched: false, type: 'module' },
+      { pattern: 'tests/integracion.spec.js', watched: false, type: 'module' },
       { pattern: 'tests/api.spec.js', watched: false, type: 'module' }
     ],
 
