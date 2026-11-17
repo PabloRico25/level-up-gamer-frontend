@@ -74,11 +74,11 @@ src/
   services/     autenticación y usuarios
   utils/        lógica de la tienda
 tests/          pruebas unitarias y de integración
-documentacion/  capturas del recorrido real
+documentacion/  manual de usuario y capturas del recorrido real
 ```
 
 ## Notas
 
 - No procesa pagos bancarios: la compra registra una boleta y descuenta stock en el backend.
-- El manual de usuario se entrega como documento aparte.
+- El manual de usuario, con pantallazos de la instalación y de cada función, está en `documentacion/MANUAL_USUARIO.docx`. La documentación del backend (ERS, APIs e integración) está en la carpeta `documentacion/` del repositorio `level-up-gamer-backend`.
 - No subir `node_modules`, `dist`, `coverage` ni `.env`.
